@@ -1,3 +1,15 @@
+import nltk
+
+# Download required data only if not already present
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 import streamlit as st
 import pickle
 import string
