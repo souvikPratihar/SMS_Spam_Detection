@@ -5,22 +5,17 @@ import nltk
 
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
+from nltk.tokenize import RegexpTokenizer
 
-# Download NLTK data if not already present
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-
+# Download stopwords only (punkt is NOT needed)
 try:
     nltk.data.find('corpora/stopwords')
 except LookupError:
     nltk.download('stopwords', quiet=True)
 
-# Initialize stemmer
 ps = PorterStemmer()
+tokenizer = RegexpTokenizer(r'\w+')
 
-# Cache the model and vectorizer loading
 @st.cache_resource
 def load_model_and_vectorizer():
     vectorizer = pickle.load(open('vectorizer.pkl', 'rb'))
@@ -29,50 +24,27 @@ def load_model_and_vectorizer():
 
 tfidf, model = load_model_and_vectorizer()
 
-# Streamlit app title
 st.title("📩 Email / SMS Spam Classifier")
 
-# Input text area
 input_sms = st.text_area("Enter the message")
 
-# Function to preprocess text
 def transform_text(text):
     text = text.lower()
-    text = nltk.word_tokenize(text)
+    tokens = tokenizer.tokenize(text)  # ✅ safe tokenization without punkt
 
-    y = []
-    for word in text:
-        if word.isalnum():
-            y.append(word)
-
-    text = y[:]
-    y.clear()
-
-    for word in text:
+    filtered = []
+    for word in tokens:
         if word not in stopwords.words('english') and word not in string.punctuation:
-            y.append(word)
+            filtered.append(ps.stem(word))
 
-    text = y[:]
-    y.clear()
+    return ' '.join(filtered)
 
-    for word in text:
-        y.append(ps.stem(word))
-
-    return ' '.join(y)
-
-# Predict button
 if st.button('Predict'):
-    # 1. Preprocess
     transformed_sms = transform_text(input_sms)
-
-    # 2. Vectorize
     vector_input = tfidf.transform([transformed_sms])
-
-    # 3. Predict
     result = model.predict(vector_input)[0]
 
-    # 4. Display result
     if result == 1:
-        st.header("🚨 SPAM 😤😒")
+        st.header("🚨 SPAM 😤")
     else:
-        st.header("✅ NOT SPAM 😁✌️")
+        st.header("✅ NOT SPAM 😄")
